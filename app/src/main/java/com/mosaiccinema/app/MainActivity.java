@@ -61,13 +61,13 @@ public class MainActivity extends Activity implements TextureView.SurfaceTexture
   @Override protected void onActivityResult(int req,int res,Intent data){super.onActivityResult(req,res,data);if(req!=7||res!=RESULT_OK||data==null)return;
     movie=data.getData();try{getContentResolver().takePersistableUriPermission(movie,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
     host=true;joined=false;hostTime=System.currentTimeMillis();hostBase=0;playing=false;version++;
-    if(server==null)startServer();
+    if(server==null){try{server=new ServerSocket(8765);server.setReuseAddress(true);startServer();}catch(Exception ex){status.setText("Server: "+ex.getMessage());return;}}
     sourceUrl="http://127.0.0.1:8765/video";load(sourceUrl);
     update();String localIp=getIp();Toast.makeText(this,"HOST IP: "+localIp+" : 8765",Toast.LENGTH_LONG).show();
     status.setText("HOST "+localIp+" | drugi telefoni upisuju ovu IP adresu");
   }
   String getIp(){try{for(Enumeration<NetworkInterface> e=NetworkInterface.getNetworkInterfaces();e.hasMoreElements();){NetworkInterface n=e.nextElement();for(Enumeration<InetAddress> a=n.getInetAddresses();a.hasMoreElements();){InetAddress i=a.nextElement();if(i instanceof Inet4Address&&!i.isLoopbackAddress()&&i.isSiteLocalAddress())return i.getHostAddress();}}}catch(Exception ignored){}return "IP nije pronađen";}
-  void startServer(){workers.execute(()->{try{server=new ServerSocket(8765);server.setReuseAddress(true);while(active){Socket s=server.accept();workers.execute(()->serve(s));}}catch(Exception ex){ui.post(()->status.setText("Server problem: "+ex.getMessage()));}});}
+  void startServer(){workers.execute(()->{try{while(active){Socket s=server.accept();workers.execute(()->serve(s));}}catch(Exception ex){ui.post(()->status.setText("Server problem: "+ex.getMessage()));}});}
   void serve(Socket socket){try(Socket s=socket;BufferedInputStream in=new BufferedInputStream(s.getInputStream());OutputStream out=new BufferedOutputStream(s.getOutputStream())){s.setSoTimeout(12000);
     ByteArrayOutputStream header=new ByteArrayOutputStream();int c,last=0;while((c=in.read())!=-1&&header.size()<16384){header.write(c);last=((last<<8)|c)&0xffffffff;if(last==0x0d0a0d0a)break;}
     String request=header.toString("ISO-8859-1");String[] p=request.split(" ");String path=p.length>1?p[1]:"/";
